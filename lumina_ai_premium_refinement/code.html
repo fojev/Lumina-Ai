@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;700;900&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#ffffff",
+                        "surface-container": "#f8f9fa",
+                        "on-tertiary-container": "#1d1b20",
+                        "background": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#f4f0ef",
+                        "on-primary": "#ffffff",
+                        "surface-variant": "#f1f3f4",
+                        "tertiary": "#49454f",
+                        "outline-variant": "#e0e0e0",
+                        "secondary-fixed": "#e8def8",
+                        "on-error-container": "#410002",
+                        "on-primary-fixed": "#21005d",
+                        "on-secondary-container": "#1d192b",
+                        "on-tertiary-fixed": "#31111d",
+                        "on-tertiary": "#ffffff",
+                        "on-background": "#1c1b1f",
+                        "surface-container-highest": "#e6e8eb",
+                        "secondary": "#4a4a4a",
+                        "primary-fixed": "#eaddff",
+                        "surface-container-low": "#f7f9fc",
+                        "secondary-container": "#f3f4f6",
+                        "on-secondary-fixed": "#1d192b",
+                        "surface-tint": "#000000",
+                        "surface-dim": "#ded8e1",
+                        "error-container": "#f9dedc",
+                        "surface": "#ffffff",
+                        "on-primary-container": "#21005d",
+                        "outline": "#79747e",
+                        "error": "#b3261e",
+                        "surface-container-high": "#eceef1",
+                        "on-surface-variant": "#44474e",
+                        "inverse-primary": "#d0bcff",
+                        "on-surface": "#1c1b1f",
+                        "tertiary-fixed": "#ffd8e4",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#313033",
+                        "tertiary-container": "#ff0000",
+                        "primary": "#1a1a1a",
+                        "primary-container": "#f3f4f6",
+                        "primary-fixed-dim": "#cbc4ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.375rem",
+                        "lg": "0.75rem",
+                        "xl": "1rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "3rem",
+                        "section-padding": "6rem",
+                        "gutter": "2rem",
+                        "container-max-width": "768px",
+                        "stack-md": "1.5rem",
+                        "stack-sm": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "body-md": ["Inter"],
+                        "h2": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "h1": ["Inter"],
+                        "display": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["13px", {"lineHeight": "1.2", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                        "body-md": ["15px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "h2": ["20px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                        "body-lg": ["17px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "h1": ["28px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                        "display": ["40px", {"lineHeight": "1.1", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #ffffff;
+            min-height: 100vh;
+        }
+        .glass-panel {
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        .chat-container {
+            max-width: 768px;
+        }
+        .message-bubble {
+            max-width: 85%;
+        }
+        .typing-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-surface selection:bg-primary/10 overflow-hidden">
+<div class="flex h-screen w-full relative">
+<!-- Sidebar -->
+<aside class="h-full w-64 border-r border-outline-variant bg-surface-container-lowest flex flex-col p-6 gap-y-10 z-50">
+<div class="flex items-center gap-3 px-2">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-white font-bold text-sm">L</div>
+<h1 class="font-display text-lg font-semibold tracking-tight text-primary uppercase letter-spacing-widest">LUMINA</h1>
+</div>
+<button class="flex items-center justify-center gap-2 border border-outline-variant hover:bg-surface-container-low text-on-surface rounded-full px-4 py-2.5 transition-all text-sm font-medium">
+<span class="material-symbols-outlined text-lg">add</span>
+<span>New Session</span>
+</button>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center px-4 py-2.5 bg-surface-container-high text-primary font-medium rounded-lg" href="#">
+<span class="text-sm">Notes</span>
+</a>
+<a class="flex items-center px-4 py-2.5 text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-all" href="#">
+<span class="text-sm">PYQ Predictor</span>
+</a>
+<a class="flex items-center px-4 py-2.5 text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-all" href="#">
+<span class="text-sm">AI Tutor</span>
+</a>
+<a class="flex items-center px-4 py-2.5 text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-all" href="#">
+<span class="text-sm">Resources</span>
+</a>
+</nav>
+<div class="pt-6 border-t border-outline-variant flex flex-col gap-1">
+<a class="flex items-center px-4 py-2 text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-all text-sm" href="#">Profile</a>
+<a class="flex items-center px-4 py-2 text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-all text-sm" href="#">Settings</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 relative flex flex-col bg-white">
+<!-- TopAppBar (Simplified) -->
+<header class="h-16 flex justify-end items-center px-gutter">
+<div class="flex items-center">
+<img alt="Profile" class="w-7 h-7 rounded-full object-cover grayscale opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdo8pUfcO3uYGrl3Qsf9JV0Tz_LCWLdTR3AD1tGDt7Z-vbQClcrrEAHz7gDSxEIGq0-Tvr50kcs5DWH4quL7epu61mSpsHi6rc1hXLAE9yr9mezkyXG18u7ywhu0B9xxPrLJ_GOVQhFEpxHCTcP6sQMnytPJvVOYCFBY5wrQ9mY1T31oUoWjbwJS8_mfGFP6hSjLA5FUWOBpZUuZEqu_cfdUVYwWpTD5J2t2_bvc0n_VJVqFRTWLHcw1ojaO9zJ6U-xT6jwit_zG0"/>
+</div>
+</header>
+<!-- Chat Stream -->
+<div class="flex-1 overflow-y-auto px-gutter pt-8 pb-48">
+<div class="chat-container mx-auto space-y-stack-md">
+<!-- User Message -->
+<div class="flex flex-col items-end">
+<div class="message-bubble rounded-2xl bg-surface-container-high px-5 py-3.5">
+<p class="text-on-surface">Can you help me organize my physics notes on thermodynamics?</p>
+</div>
+</div>
+<!-- AI Message -->
+<div class="flex flex-col items-start group">
+<div class="message-bubble flex flex-col gap-2">
+<div class="bg-surface-container-lowest border border-outline-variant/60 rounded-2xl px-5 py-3.5 shadow-sm">
+<p class="text-on-surface">Of course! I've structured the core principles of Thermodynamics for you. We can focus on the Laws, Entropy, or Heat Transfer mechanisms first.</p>
+</div>
+<!-- Action Buttons -->
+<div class="flex gap-1 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 text-on-surface-variant hover:text-primary rounded transition-colors"><span class="material-symbols-outlined text-[18px]">content_copy</span></button>
+<button class="p-1.5 text-on-surface-variant hover:text-primary rounded transition-colors"><span class="material-symbols-outlined text-[18px]">refresh</span></button>
+<button class="p-1.5 text-on-surface-variant hover:text-primary rounded transition-colors"><span class="material-symbols-outlined text-[18px]">thumb_up</span></button>
+<button class="p-1.5 text-on-surface-variant hover:text-primary rounded transition-colors"><span class="material-symbols-outlined text-[18px]">thumb_down</span></button>
+</div>
+</div>
+</div>
+<!-- User Message -->
+<div class="flex flex-col items-end">
+<div class="message-bubble rounded-2xl bg-surface-container-high px-5 py-3.5">
+<p class="text-on-surface">Can you predict the most likely questions for my upcoming Quantum Mechanics exam?</p>
+</div>
+</div>
+<!-- AI Message (Typing Animation Placeholder) -->
+<div class="flex flex-col items-start">
+<div class="message-bubble bg-surface-container-lowest border border-outline-variant/60 rounded-2xl px-5 py-4 flex gap-1 items-center text-on-surface-variant">
+<div class="typing-dot"></div>
+<div class="typing-dot"></div>
+<div class="typing-dot"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Input Section -->
+<div class="absolute bottom-0 left-0 right-0 p-gutter pb-10 bg-gradient-to-t from-white via-white/90 to-transparent">
+<div class="chat-container mx-auto">
+<!-- Suggestion Chips -->
+<div class="flex flex-wrap justify-center gap-2 mb-6">
+<button class="px-4 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors">Summarize my notes</button>
+<button class="px-4 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors">Generate practice quiz</button>
+<button class="px-4 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors">Explain Schrödinger's Cat</button>
+</div>
+<!-- Input Box -->
+<div class="glass-panel bg-white/80 border border-outline-variant rounded-full px-6 py-2 shadow-xl shadow-black/5 flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">attach_file</span>
+</button>
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/40 text-sm py-3" placeholder="Message Lumina AI..." type="text"/>
+<div class="flex items-center gap-1">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">mic</span>
+</button>
+<button class="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-all ml-1">
+<span class="material-symbols-outlined text-[20px]">arrow_upward</span>
+</button>
+</div>
+</div>
+<div class="mt-4 text-center">
+<span class="text-[11px] text-on-surface-variant opacity-40 uppercase tracking-[0.1em] font-medium">Lumina AI can make mistakes. Verify important info.</span>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

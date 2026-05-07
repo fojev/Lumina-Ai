@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;700;900&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#faf8ff",
+                        "surface-container": "#eaedff",
+                        "on-tertiary-container": "#fefcff",
+                        "on-secondary-fixed-variant": "#6900b3",
+                        "background": "#faf8ff",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#eef0ff",
+                        "on-primary": "#ffffff",
+                        "surface-variant": "#dae2fd",
+                        "tertiary": "#545c70",
+                        "outline-variant": "#c7c4d7",
+                        "secondary-fixed": "#f0dbff",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#3f4759",
+                        "on-primary-fixed": "#07006c",
+                        "on-secondary-container": "#fffbff",
+                        "tertiary-fixed-dim": "#bfc6dd",
+                        "on-tertiary-fixed": "#141b2c",
+                        "on-tertiary": "#ffffff",
+                        "on-background": "#131b2e",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "surface-container-highest": "#dae2fd",
+                        "secondary": "#8127cf",
+                        "primary-fixed": "#e1e0ff",
+                        "surface-container-low": "#f2f3ff",
+                        "secondary-container": "#9c48ea",
+                        "on-secondary-fixed": "#2c0051",
+                        "surface-tint": "#494bd6",
+                        "surface-dim": "#d2d9f4",
+                        "error-container": "#ffdad6",
+                        "surface": "#faf8ff",
+                        "on-primary-container": "#fffbff",
+                        "outline": "#767586",
+                        "error": "#ba1a1a",
+                        "surface-container-high": "#e2e7ff",
+                        "on-surface-variant": "#464554",
+                        "inverse-primary": "#c0c1ff",
+                        "on-surface": "#131b2e",
+                        "tertiary-fixed": "#dbe2fa",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffffff",
+                        "secondary-fixed-dim": "#ddb7ff",
+                        "inverse-surface": "#283044",
+                        "tertiary-container": "#6d7489",
+                        "primary": "#4648d4",
+                        "primary-container": "#6063ee",
+                        "primary-fixed-dim": "#c0c1ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "2rem",
+                        "section-padding": "4rem",
+                        "gutter": "1.5rem",
+                        "container-max-width": "800px",
+                        "stack-md": "1rem",
+                        "stack-sm": "0.5rem"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Space Grotesk"],
+                        "body-md": ["Inter"],
+                        "h2": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "h1": ["Inter"],
+                        "display": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", {"lineHeight": "1.0", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "h2": ["24px", {"lineHeight": "1.3", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "h1": ["32px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                        "display": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background: radial-gradient(circle at top right, #f0dbff 0%, #faf8ff 40%),
+                        radial-gradient(circle at bottom left, #e1e0ff 0%, #faf8ff 40%);
+            min-height: 100vh;
+        }
+        .glass-panel {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .chat-container {
+            max-width: 800px;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-surface selection:bg-primary-fixed-dim/30 overflow-hidden">
+<div class="flex h-screen w-full relative">
+<!-- SideNavBar (Authority: JSON) -->
+<aside class="docked left-0 h-full w-72 border-r border-outline-variant/10 bg-surface-container/60 dark:bg-inverse-surface/40 backdrop-blur-2xl flex flex-col p-4 gap-y-stack-md z-50">
+<div class="flex items-center gap-3 px-2 py-4">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold">
+                    L
+                </div>
+<div>
+<h1 class="font-display text-h2 font-semibold tracking-tight text-primary">LUMINA AI</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant opacity-70">Premium Synthesis</p>
+</div>
+</div>
+<button class="flex items-center justify-center gap-2 bg-primary text-on-primary rounded-xl px-4 py-3 shadow-lg shadow-primary/20 hover:opacity-90 transition-all mb-4">
+<span class="material-symbols-outlined">add</span>
+<span class="font-label-caps text-label-caps">New Chat</span>
+</button>
+<nav class="flex-1 space-y-1">
+<!-- Notes Generator Active -->
+<a class="flex items-center gap-3 bg-primary/10 text-primary font-medium rounded-xl px-4 py-3" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-label-caps text-label-caps">Notes Generator</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl px-4 py-3 transition-all duration-300" href="#">
+<span class="material-symbols-outlined">psychology</span>
+<span class="font-label-caps text-label-caps">PYQ Predictor</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl px-4 py-3 transition-all duration-300" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-label-caps text-label-caps">AI Tutor</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl px-4 py-3 transition-all duration-300" href="#">
+<span class="material-symbols-outlined">folder</span>
+<span class="font-label-caps text-label-caps">Resources</span>
+</a>
+</nav>
+<div class="pt-4 border-t border-outline-variant/10 space-y-1">
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl px-4 py-3 transition-all duration-300" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="font-label-caps text-label-caps">Profile</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl px-4 py-3 transition-all duration-300" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-caps text-label-caps">Settings</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 relative flex flex-col">
+<!-- TopAppBar (Authority: JSON) -->
+<header class="fixed top-0 right-0 left-72 z-40 h-16 bg-transparent flex justify-between items-center px-gutter">
+<div></div> <!-- Spacer -->
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<img alt="Profile" class="w-8 h-8 rounded-full border border-primary/20" data-alt="A clean, professional portrait of a user in a high-tech modern environment. The person is softly backlit with a subtle purple glow, fitting the Lumina AI brand aesthetic. The photography style is high-key with soft focus on the background to emphasize clarity and premium quality. The overall mood is intelligent, calm, and sophisticated." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdo8pUfcO3uYGrl3Qsf9JV0Tz_LCWLdTR3AD1tGDt7Z-vbQClcrrEAHz7gDSxEIGq0-Tvr50kcs5DWH4quL7epu61mSpsHi6rc1hXLAE9yr9mezkyXG18u7ywhu0B9xxPrLJ_GOVQhFEpxHCTcP6sQMnytPJvVOYCFBY5wrQ9mY1T31oUoWjbwJS8_mfGFP6hSjLA5FUWOBpZUuZEqu_cfdUVYwWpTD5J2t2_bvc0n_VJVqFRTWLHcw1ojaO9zJ6U-xT6jwit_zG0"/>
+</div>
+</header>
+<!-- Chat Stream -->
+<div class="flex-1 overflow-y-auto px- gutter pt-24 pb-40">
+<div class="chat-container mx-auto space-y-stack-lg">
+<!-- User Message -->
+<div class="flex flex-col items-end">
+<div class="max-w-[80%] rounded-2xl bg-surface-container-high/50 px-6 py-4 border border-outline-variant/10">
+<p class="font-body-md text-on-surface">Can you help me organize my physics notes on thermodynamics?</p>
+</div>
+</div>
+<!-- AI Message -->
+<div class="flex flex-col items-start">
+<div class="flex gap-4 items-start max-w-[90%]">
+<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold shadow-sm shadow-primary/30">
+                                AI
+                            </div>
+<div class="space-y-4">
+<div class="px-2">
+<p class="font-body-md text-on-surface">Of course! I'll use the Notes Generator to structure that for you. Here is a synthesized overview of the core principles of Thermodynamics.</p>
+</div>
+<!-- Notes Generator Component (Bento-style Card) -->
+<div class="glass-panel bg-white/40 border border-white/60 rounded-3xl p-6 shadow-xl shadow-primary/5 space-y-6">
+<div class="flex items-center justify-between border-b border-outline-variant/10 pb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">description</span>
+<span class="font-label-caps text-label-caps text-primary">SYNTHESIS MODULE: PHYSICS</span>
+</div>
+<span class="text-[10px] font-bold text-on-surface-variant opacity-50 uppercase tracking-widest">v1.4.2</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Law 1 -->
+<div class="bg-primary/5 rounded-2xl p-4 border border-primary/10">
+<h3 class="font-label-caps text-primary mb-2">01. FIRST LAW</h3>
+<p class="text-sm text-on-surface-variant">Conservation of energy. Energy cannot be created or destroyed, only transformed from one form to another.</p>
+</div>
+<!-- Law 2 -->
+<div class="bg-secondary/5 rounded-2xl p-4 border border-secondary/10">
+<h3 class="font-label-caps text-secondary mb-2">02. ENTROPY</h3>
+<p class="text-sm text-on-surface-variant">The total entropy of an isolated system can never decrease over time; it can only remain constant or increase.</p>
+</div>
+<!-- Heat Transfer Block -->
+<div class="md:col-span-2 bg-surface-container/40 rounded-2xl p-4 border border-outline-variant/10">
+<h3 class="font-label-caps text-on-surface mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">thermostat</span>
+                                                HEAT TRANSFER MECHANISMS
+                                            </h3>
+<div class="grid grid-cols-3 gap-2">
+<div class="text-center p-2 rounded-xl bg-white/50 border border-white">
+<span class="block text-[10px] font-bold opacity-60">CONDUCTION</span>
+</div>
+<div class="text-center p-2 rounded-xl bg-white/50 border border-white">
+<span class="block text-[10px] font-bold opacity-60">CONVECTION</span>
+</div>
+<div class="text-center p-2 rounded-xl bg-white/50 border border-white">
+<span class="block text-[10px] font-bold opacity-60">RADIATION</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex justify-end gap-2 pt-2">
+<button class="px-4 py-2 rounded-full border border-outline-variant/20 text-xs font-label-caps hover:bg-surface-container transition-colors">Export PDF</button>
+<button class="px-4 py-2 rounded-full bg-primary/10 text-primary text-xs font-label-caps hover:bg-primary/20 transition-colors">Save to Resources</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end animate-in fade-in slide-in-from-bottom-4 duration-500">
+<div class="max-w-[80%] rounded-2xl bg-surface-container-high/50 px-6 py-4 border border-outline-variant/10">
+<p class="font-body-md text-on-surface">Can you predict the most likely questions for my upcoming Quantum Mechanics exam?</p>
+</div>
+</div><div class="flex flex-col items-start">
+<div class="flex gap-4 items-start max-w-[90%]">
+<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold shadow-sm shadow-primary/30">
+      AI
+    </div>
+<div class="space-y-4 w-full">
+<div class="px-2">
+<p class="font-body-md text-on-surface">Based on historical data and current curriculum trends, here are the predicted topics and questions for your Quantum Mechanics exam.</p>
+</div>
+<div class="glass-panel bg-white/40 border border-white/60 rounded-3xl p-6 shadow-xl shadow-primary/5 space-y-4">
+<div class="flex items-center justify-between border-b border-outline-variant/10 pb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">psychology</span>
+<span class="font-label-caps text-label-caps text-secondary">PYQ PREDICTOR: QUANTUM MECHANICS</span>
+</div>
+<span class="text-[10px] font-bold text-on-surface-variant opacity-50 uppercase tracking-widest">Analysis Active</span>
+</div>
+<div class="space-y-3">
+<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low/50 border border-outline-variant/5">
+<span class="font-body-md text-sm">Schrödinger's Equation for 1D Infinite Potential Well</span>
+<span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">85% Prob.</span>
+</div>
+<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low/50 border border-outline-variant/5">
+<span class="font-body-md text-sm">Heisenberg Uncertainty Principle &amp; Wave-Particle Duality</span>
+<span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">72% Prob.</span>
+</div>
+<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low/50 border border-outline-variant/5">
+<span class="font-body-md text-sm">Angular Momentum Operators and Eigenvalues</span>
+<span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">64% Prob.</span>
+</div>
+</div>
+<div class="flex justify-end pt-2">
+<button class="px-4 py-2 rounded-full bg-secondary/10 text-secondary text-xs font-label-caps hover:bg-secondary/20 transition-colors">View Detailed Analysis</button>
+</div>
+</div>
+</div>
+</div>
+</div></div>
+</div>
+<!-- Floating Input Bar -->
+<div class="fixed bottom-10 left-72 right-0 px-gutter z-50">
+<div class="chat-container mx-auto">
+<div class="glass-panel bg-white/60 border border-white/80 rounded-full px-6 py-3 shadow-2xl shadow-primary/10 flex items-center gap-3">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">attach_file</span>
+</button>
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/40 font-body-md" placeholder="Ask anything..." type="text"/>
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">mic</span>
+</button>
+<button class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined">send</span>
+</button>
+</div>
+</div>
+<div class="mt-3 flex justify-center gap-4">
+<span class="font-label-caps text-[10px] text-on-surface-variant opacity-50 flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">verified_user</span>
+                            SECURE PROCESSING ACTIVE
+                        </span>
+<span class="font-label-caps text-[10px] text-on-surface-variant opacity-50 flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">auto_awesome</span>
+                            LLM-4 PREMIUM ENGINE
+                        </span>
+</div>
+<div class="flex flex-col items-end animate-in fade-in slide-in-from-bottom-4 duration-500">
+<div class="max-w-[80%] rounded-2xl bg-surface-container-high/50 px-6 py-4 border border-outline-variant/10">
+<p class="font-body-md text-on-surface">Can you predict the most likely questions for my upcoming Quantum Mechanics exam?</p>
+</div>
+</div><div class="flex flex-col items-start">
+<div class="flex gap-4 items-start max-w-[90%]">
+<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold shadow-sm shadow-primary/30">
+      AI
+    </div>
+<div class="space-y-4 w-full">
+<div class="px-2">
+<p class="font-body-md text-on-surface">Based on historical data and current curriculum trends, here are the predicted topics and questions for your Quantum Mechanics exam.</p>
+</div>
+<div class="glass-panel bg-white/40 border border-white/60 rounded-3xl p-6 shadow-xl shadow-primary/5 space-y-4">
+<div class="flex items-center justify-between border-b border-outline-variant/10 pb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">psychology</span>
+<span class="font-label-caps text-label-caps text-secondary">PYQ PREDICTOR: QUANTUM MECHANICS</span>
+</div>
+<span class="text-[10px] font-bold text-on-surface-variant opacity-50 uppercase tracking-widest">Analysis Active</span>
+</div>
+<div class="space-y-3">
+<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low/50 border border-outline-variant/5">
+<span class="font-body-md text-sm">Schrödinger's Equation for 1D Infinite Potential Well</span>
+<span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">85% Prob.</span>
+</div>
+<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low/50 border border-outline-variant/5">
+<span class="font-body-md text-sm">Heisenberg Uncertainty Principle &amp; Wave-Particle Duality</span>
+<span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">72% Prob.</span>
+</div>
+<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-low/50 border border-outline-variant/5">
+<span class="font-body-md text-sm">Angular Momentum Operators and Eigenvalues</span>
+<span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">64% Prob.</span>
+</div>
+</div>
+<div class="flex justify-end pt-2">
+<button class="px-4 py-2 rounded-full bg-secondary/10 text-secondary text-xs font-label-caps hover:bg-secondary/20 transition-colors">View Detailed Analysis</button>
+</div>
+</div>
+</div>
+</div>
+</div></div>
+</div>
+<!-- Footer (Authority: JSON) -->
+<footer class="mt-auto w-full py-stack-md bg-transparent max-w-container-max-width mx-auto flex justify-between items-center px-gutter relative z-10">
+<span class="font-label-caps text-label-caps text-on-surface-variant">© 2024 LUMINA AI. Illuminated Intelligence.</span>
+<div class="flex gap-6">
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors" href="#">Terms</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors" href="#">API</a>
+</div>
+</footer>
+</main>
+</div>
+</body></html>
