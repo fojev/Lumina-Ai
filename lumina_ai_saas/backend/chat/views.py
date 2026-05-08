@@ -1,6 +1,8 @@
+import json
+from django.http import StreamingHttpResponse
 from rest_framework import status, views
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from .models import Chat, Message
 from .serializers import ChatSerializer, MessageSerializer
 from ai_services.groq_service import get_groq_response
@@ -34,8 +36,7 @@ class ChatMessageView(views.APIView):
         if not user_message_content:
             return Response({"error": "Message content is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Extract extra params from frontend
-        history = request.data.get('history', [])          # [{role, content}]
+        history = request.data.get('history', [])
         study_mode = request.data.get('study_mode', 'normal')
         college = request.data.get('college', '') or getattr(request.user, 'college_name', '')
 
@@ -69,7 +70,6 @@ class ChatMessageView(views.APIView):
             for vid in youtube_videos:
                 intelligence_context += f"- {vid['title']}: {vid['link']}\n"
 
-        # Get AI response with full context
         prompt_with_context = user_message_content
         if intelligence_context:
             prompt_with_context += f"\n\n[SYSTEM DATA]: Use the following academic context and resources. " \
@@ -79,12 +79,28 @@ class ChatMessageView(views.APIView):
                                    f"Also naturally integrate the PYQ data if relevant.\n\n" \
                                    f"DATA:\n{intelligence_context}"
 
-        ai_response_content = get_groq_response(
-            prompt=prompt_with_context,
-            history=history,
-            study_mode=study_mode,
-            college=college,
-        )
+        def stream_response():
+            full_content = ""
+            try:
+                response_stream = get_groq_response(
+                    prompt=prompt_with_context,
+                    history=history,
+                    study_mode=study_mode,
+                    college=college,
+                    stream=True
+                )
+                
+                for chunk in response_stream:
+                    if chunk.choices[0].delta.content:
+                        content = chunk.choices[0].delta.content
+                        full_content += content
+                        yield f"data: {json.dumps({'content': content})}\n\n"
+                
+                # After stream ends, save to DB
+                ai_message = Message.objects.create(chat=chat, role='ai', content=full_content)
+                yield f"data: {json.dumps({'id': ai_message.id, 'done': True})}\n\n"
+                
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
-        ai_message = Message.objects.create(chat=chat, role='ai', content=ai_response_content)
-        return Response(MessageSerializer(ai_message).data, status=status.HTTP_201_CREATED)
+        return StreamingHttpResponse(stream_response(), content_type='text/event-stream')

@@ -25,14 +25,102 @@ async function extractTextFromFile(file) {
   return `[File: ${file.name}]`;
 }
 
+/* ── Dynamic Greeting ────────────────────────────────────── */
+const GREETINGS = [
+  "Ready to dive in?",
+  "What can I help you create today?",
+  "Your AI assistant is ready.",
+  "Ask anything. Build everything.",
+  "Welcome back.",
+  "Let’s create something amazing.",
+  "Start your next idea here.",
+  "How can I assist you today?"
+];
+
+function DynamicGreeting() {
+  const [index, setIndex] = useState(0);
+  const [displayText, setDisplayText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [speed, setSpeed] = useState(100);
+
+  useEffect(() => {
+    const handleTyping = () => {
+      const fullText = GREETINGS[index];
+      setDisplayText(
+        isDeleting
+          ? fullText.substring(0, displayText.length - 1)
+          : fullText.substring(0, displayText.length + 1)
+      );
+
+      if (!isDeleting && displayText === fullText) {
+        setTimeout(() => setIsDeleting(true), 1500);
+        setSpeed(50);
+      } else if (isDeleting && displayText === "") {
+        setIsDeleting(false);
+        setIndex((prev) => (prev + 1) % GREETINGS.length);
+        setSpeed(100);
+      }
+    };
+
+    const timer = setTimeout(handleTyping, speed);
+    return () => clearTimeout(timer);
+  }, [displayText, isDeleting, index, speed]);
+
+  return (
+    <div className="flex flex-col items-center justify-center py-32 text-center">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-16 h-16 rounded-[26px] flex items-center justify-center mb-8"
+        style={{
+          background: 'var(--chip-bg)',
+          border: '1px solid var(--chip-border)',
+          boxShadow: '0 0 40px var(--glow)',
+        }}
+      >
+        <Sparkles size={30} style={{ color: 'var(--primary)' }} />
+      </motion.div>
+
+      <div className="h-24 flex items-center justify-center">
+        <motion.h2
+          className="text-[32px] sm:text-[42px] font-black tracking-tight leading-tight px-4"
+          style={{ 
+            fontFamily: 'Poppins,sans-serif', 
+            color: 'var(--text)',
+            textShadow: '0 0 30px rgba(var(--primary-rgb), 0.2)'
+          }}
+        >
+          {displayText}
+          <span className="blinking-cursor ml-1" style={{ height: '0.9em', width: '3px' }} />
+        </motion.h2>
+      </div>
+      
+      <motion.p 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        className="text-[15px] font-medium mt-6 opacity-40" 
+        style={{ color: 'var(--text)' }}
+      >
+        Lumina AI • Adaptive Intelligence
+      </motion.p>
+    </div>
+  );
+}
+
 /* ============================================================
    CHAT INTERFACE
    ============================================================ */
 export default function ChatInterface({ onChatUpdate, tab }) {
   const {
-    messages, isLoading, studyMode, setStudyMode,
-    sendMessage, regenerate, saveMessage, feedback, setFeedbackFor,
+    messages, isLoading, isStreaming, studyMode, setStudyMode,
+    sendMessage, regenerate, saveMessage, feedback, setFeedbackFor, triggerIntro
   } = useChat(onChatUpdate);
+
+  // Note: Disabled triggerIntro on mount to prioritize the new Dynamic Greeting section.
+  // useEffect(() => {
+  //   if (messages.length === 0) triggerIntro();
+  // }, []);
 
   const [input,              setInput]              = useState('');
   const [suggestions,        setSuggestions]        = useState([
@@ -69,9 +157,18 @@ export default function ChatInterface({ onChatUpdate, tab }) {
   }, [messages.length, isLoading]);
 
   /* ── scroll to bottom ────────────────────────────────────── */
+  const scrollContainerRef = useRef(null);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading]);
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 150;
+    
+    if (isAtBottom || (messages.length > 0 && messages[messages.length-1].role === 'user')) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isLoading, isStreaming]);
 
   /* ── close attachment menu on outside click ─────────────── */
   useEffect(() => {
@@ -146,48 +243,29 @@ export default function ChatInterface({ onChatUpdate, tab }) {
     } catch (e) { console.error(e); }
   };
 
-  const isEmpty = messages.length === 1 && messages[0]?.id === 'init';
+  const isEmpty = messages.length === 0;
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden relative"
       style={{ background: 'var(--bg)' }}>
 
       {/* ── Messages ─────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 pt-20 pb-56 no-scrollbar">
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto px-4 sm:px-6 pt-20 pb-56 no-scrollbar"
+      >
         <div className="chat-container-max space-y-10">
 
-          {/* Empty state */}
-          {isEmpty && (
-            <motion.div
-              initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08, type: 'spring', stiffness: 260, damping: 24 }}
-              className="flex flex-col items-center justify-center py-20 text-center gap-7"
-            >
-              <div className="w-16 h-16 rounded-[26px] flex items-center justify-center"
-                style={{
-                  background: 'var(--chip-bg)',
-                  border: '1px solid var(--chip-border)',
-                  boxShadow: '0 0 36px var(--glow)',
-                }}>
-                <Sparkles size={30} style={{ color: 'var(--primary)' }} />
-              </div>
-              <div className="space-y-2.5">
-                <h2 className="text-[26px] font-black tracking-tight"
-                  style={{ fontFamily: 'Poppins,sans-serif', color: 'var(--text)' }}>
-                  What can I help you study?
-                </h2>
-                <p className="text-[14.5px] font-medium" style={{ color: 'var(--text-3)' }}>
-                  Ask a question, upload notes, or pick a tool from the sidebar.
-                </p>
-              </div>
-            </motion.div>
-          )}
+          {/* Empty state / Dynamic Greeting */}
+          {isEmpty && <DynamicGreeting />}
 
           {/* Messages list */}
           {messages.map((msg, i) => (
             <MessageBubble
               key={msg.id || i}
               msg={msg}
+              isLast={i === messages.length - 1}
+              isStreaming={isStreaming && i === messages.length - 1}
               onRegenerate={regenerate}
               onSave={saveMessage}
               feedback={feedback?.[msg.id]}

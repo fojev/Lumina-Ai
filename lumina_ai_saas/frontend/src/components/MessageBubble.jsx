@@ -62,7 +62,7 @@ function exportPDF(content) {
   doc.save(`lumina-${Date.now()}.pdf`);
 }
 
-/* ── Typing Bubble (exported for ChatInterface) ──────────── */
+/* ── Typing Bubble ────────────────────────────────────────── */
 export function TypingBubble() {
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
@@ -81,10 +81,53 @@ export function TypingBubble() {
   );
 }
 
+/* ── Typewriter Hook ────────────────────────────────────── */
+function useTypewriter(text, speed = 10, isStreaming) {
+  const [displayedText, setDisplayedText] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    // If text is reset/shorter (regeneration), sync immediately
+    if (text.length < displayedText.length) {
+      setDisplayedText("");
+      return;
+    }
+
+    if (text.length > displayedText.length) {
+      setIsTyping(true);
+      if (timerRef.current) clearInterval(timerRef.current);
+      
+      timerRef.current = setInterval(() => {
+        setDisplayedText(prev => {
+          if (prev.length < text.length) {
+            // Adaptive speed: jump by more characters if we're far behind
+            const delta = text.length - prev.length;
+            let jump = 1;
+            if (delta > 200) jump = 8;
+            else if (delta > 100) jump = 4;
+            else if (delta > 50) jump = 2;
+            
+            return text.slice(0, prev.length + jump);
+          }
+          clearInterval(timerRef.current);
+          setIsTyping(false);
+          return prev;
+        });
+      }, speed);
+    } else {
+      setIsTyping(false);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [text, speed]);
+
+  return { displayedText, isTyping };
+}
+
 /* ============================================================
    MESSAGE BUBBLE
    ============================================================ */
-export default function MessageBubble({ msg, onRegenerate, onSave, feedback, onFeedback }) {
+export default function MessageBubble({ msg, onRegenerate, onSave, feedback, onFeedback, isStreaming, isLast }) {
   const [hovered,      setHovered]      = useState(false);
   const [copied,       setCopied]       = useState(false);
   const [shared,       setShared]       = useState(false);
@@ -125,59 +168,104 @@ export default function MessageBubble({ msg, onRegenerate, onSave, feedback, onF
     .filter(Boolean);
   const hasSources = sources.length > 0;
 
-  /* ── Format body ──────────────────────────────────── */
-  const renderBody = () => mainText.split('\n').map((line, i) => {
-    const html = line
-      .replace(/\*\*(.*?)\*\*/g, `<strong style="color:var(--primary-h);font-weight:700">$1</strong>`)
-      .replace(/`([^`]+)`/g, `<code style="background:var(--code-bg);border:1px solid var(--code-border);color:var(--code-text);border-radius:5px;padding:0.1em 0.45em;font-family:JetBrains Mono,monospace;font-size:0.85em">$1</code>`);
+  // Typewriter effect integration
+  const { displayedText, isTyping } = useTypewriter(mainText, 8, isStreaming);
+  const activeStreaming = isStreaming || isTyping;
 
-    if (!html.trim()) return <div key={i} className="h-2.5" />;
-    if (line.startsWith('### ') || line.startsWith('## '))
-      return <h3 key={i} className="font-bold text-[15.5px] mt-5 mb-2"
-        style={{ fontFamily: 'Poppins,sans-serif', color: 'var(--text)' }}
-        dangerouslySetInnerHTML={{ __html: html.replace(/^#+\s/, '') }} />;
-    if (/^[-•]\s/.test(line))
+  /* ── Format body ──────────────────────────────────── */
+  const renderBody = (textToRender) => {
+    if (textToRender.includes('```')) {
+      const parts = textToRender.split(/(```[\s\S]*?```)/g);
+      return parts.map((part, i) => {
+        if (part.startsWith('```')) {
+          const content = part.replace(/```(\w+)?\n?/, '').replace(/```$/, '').trim();
+          const lang = part.match(/```(\w+)/)?.[1] || 'code';
+          return (
+            <div key={i} className="my-5 rounded-2xl overflow-hidden border" style={{ borderColor: 'var(--border)', background: 'var(--input-bg)' }}>
+              <div className="flex items-center justify-between px-4 py-2 border-b" style={{ borderColor: 'var(--border)', background: 'rgba(0,0,0,0.05)' }}>
+                <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-3)' }}>{lang}</span>
+                <button onClick={() => copyText(content)} className="p-1 hover:text-primary transition-colors">
+                  <Check size={12} className={copied ? "opacity-100" : "opacity-0 absolute"} />
+                  <Copy size={12} className={copied ? "opacity-0" : "opacity-100"} />
+                </button>
+              </div>
+              <pre className="p-4 overflow-x-auto text-[13.5px] leading-relaxed" style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-2)' }}>
+                <code>{content}</code>
+              </pre>
+            </div>
+          );
+        }
+        return renderMarkdown(part);
+      });
+    }
+    return renderMarkdown(textToRender);
+  };
+
+  const renderMarkdown = (text) => {
+    const lines = text.split('\n');
+    return lines.map((line, i) => {
+      const html = line
+        .replace(/\*\*(.*?)\*\*/g, `<strong style="color:var(--primary-h);font-weight:700">$1</strong>`)
+        .replace(/`([^`]+)`/g, `<code style="background:var(--code-bg);border:1px solid var(--code-border);color:var(--code-text);border-radius:5px;padding:0.1em 0.45em;font-family:JetBrains Mono,monospace;font-size:0.85em">$1</code>`);
+
+      const isLastLine = i === lines.length - 1;
+
+      if (!html.trim() && !isLastLine) return <div key={i} className="h-2.5" />;
+      
+      if (line.startsWith('### ') || line.startsWith('## '))
+        return (
+          <h3 key={i} className="font-bold text-[15.5px] mt-5 mb-2"
+            style={{ fontFamily: 'Poppins,sans-serif', color: 'var(--text)' }}>
+            <span dangerouslySetInnerHTML={{ __html: html.replace(/^#+\s/, '') }} />
+            {activeStreaming && isLastLine && isLast && <span className="blinking-cursor" />}
+          </h3>
+        );
+
+      if (/^[-•]\s/.test(line))
+        return (
+          <div key={i} className="flex items-start gap-2.5 mb-2">
+            <span className="mt-[9px] w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--primary)' }} />
+            <p className="text-[15px] leading-relaxed" style={{ color: 'var(--text)' }}>
+              <span dangerouslySetInnerHTML={{ __html: html.replace(/^[-•]\s/, '') }} />
+              {activeStreaming && isLastLine && isLast && <span className="blinking-cursor" />}
+            </p>
+          </div>
+        );
+
       return (
-        <div key={i} className="flex items-start gap-2.5 mb-2">
-          <span className="mt-[9px] w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--primary)' }} />
-          <p className="text-[15px] leading-relaxed" style={{ color: 'var(--text)' }}
-            dangerouslySetInnerHTML={{ __html: html.replace(/^[-•]\s/, '') }} />
-        </div>
+        <p key={i} className="text-[15px] leading-[1.78] mb-3.5 last:mb-0" style={{ color: 'var(--text)' }}>
+          <span dangerouslySetInnerHTML={{ __html: html }} />
+          {activeStreaming && isLastLine && isLast && <span className="blinking-cursor" />}
+        </p>
       );
-    return <p key={i} className="text-[15px] leading-[1.78] mb-3.5 last:mb-0"
-      style={{ color: 'var(--text)' }} dangerouslySetInnerHTML={{ __html: html }} />;
-  });
+    });
+  };
 
   /* ── AI bubble ────────────────────────────────────── */
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 290, damping: 26 }}
+    <motion.div 
+      initial={{ opacity: 0, y: 12, scale: 0.99 }} 
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.4, ease: [0.19, 1, 0.22, 1] }}
       className="flex items-start gap-4 w-full"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}>
 
-      {/* Avatar */}
       <div className="w-9 h-9 rounded-2xl flex items-center justify-center flex-shrink-0 mt-0.5"
         style={{ background: 'linear-gradient(135deg,var(--primary),var(--secondary))', boxShadow: '0 4px 14px var(--glow)' }}>
         <span className="text-[10px] font-black text-white">LU</span>
       </div>
 
       <div className="flex-1 min-w-0">
-
-        {/* ── Answer / Links tab bar ──────────────────── */}
-        <div className="flex items-center gap-4 mb-4 pb-1"
-          style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-4 mb-4 pb-1" style={{ borderBottom: '1px solid var(--border)' }}>
           {(['answer', ...(hasSources ? ['links'] : [])]).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`tab-underline pb-2 text-[12.5px] font-semibold capitalize transition-colors ${
-                activeTab === tab ? 'active-tab' : ''
-              }`}
+              className={`tab-underline pb-2 text-[12.5px] font-semibold capitalize transition-colors ${activeTab === tab ? 'active-tab' : ''}`}
               style={{ color: activeTab === tab ? 'var(--primary)' : 'var(--text-3)' }}>
               {tab === 'links' ? `Links (${sources.length})` : 'Answer'}
             </button>
           ))}
 
-          {/* Three-dot menu */}
           <div className="relative ml-auto" ref={pdfRef}>
             <button onClick={() => setShowPdfMenu(v => !v)}
               className="p-1.5 rounded-lg transition-all"
@@ -193,7 +281,6 @@ export default function MessageBubble({ msg, onRegenerate, onSave, feedback, onF
                 <motion.div initial={{ opacity: 0, scale: 0.93, y: -6 }}
                   animate={{ opacity: 1, scale: 1,    y: 0 }}
                   exit={{   opacity: 0, scale: 0.93, y: -6 }}
-                  transition={{ duration: 0.14 }}
                   className="absolute right-0 top-full mt-1.5 w-44 rounded-2xl z-50 p-1.5 glass-dropdown">
                   <button onClick={() => { exportPDF(msg.content); setShowPdfMenu(false); }}
                     className="w-full flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-semibold rounded-xl transition-all"
@@ -208,27 +295,16 @@ export default function MessageBubble({ msg, onRegenerate, onSave, feedback, onF
           </div>
         </div>
 
-        {/* ── Content pane ─────────────────────────────── */}
         <AnimatePresence mode="wait">
           {(activeTab === 'answer' || !hasSources) ? (
-            <motion.div key="answer"
-              initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.16 }}>
-              {renderBody()}
+            <motion.div key="answer" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}>
+              {renderBody(displayedText)}
             </motion.div>
           ) : (
-            <motion.div key="links"
-              initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.16 }}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <motion.div key="links" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {sources.map((src, idx) => (
-                <a key={idx} href={src.url} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-3.5 p-3.5 rounded-2xl transition-all"
-                  style={{ background: 'var(--sidebar)', border: '1px solid var(--border)' }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary)'}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)' }}>
+                <a key={idx} href={src.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3.5 p-3.5 rounded-2xl transition-all" style={{ background: 'var(--sidebar)', border: '1px solid var(--border)' }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)' }}>
                     <Play size={11} className="text-red-400 fill-red-400/20" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -241,9 +317,8 @@ export default function MessageBubble({ msg, onRegenerate, onSave, feedback, onF
           )}
         </AnimatePresence>
 
-        {/* ── Action buttons ────────────────────────────── */}
         <div className="flex items-center gap-0.5 mt-5 transition-all duration-200"
-          style={{ opacity: hovered ? 1 : 0, transform: hovered ? 'translateY(0)' : 'translateY(3px)' }}>
+          style={{ opacity: hovered && !activeStreaming ? 1 : 0, transform: hovered && !activeStreaming ? 'translateY(0)' : 'translateY(3px)' }}>
           {[
             { icon: copied ? <Check size={13}/> : <Copy size={13}/>,       label: copied  ? 'Copied!'  : 'Copy',       onClick: handleCopy,                             active: copied,         },
             { icon: <RefreshCw size={13}/>,                                  label: 'Regenerate',                         onClick: () => onRegenerate?.(msg.id),                                   },
@@ -255,7 +330,6 @@ export default function MessageBubble({ msg, onRegenerate, onSave, feedback, onF
         </div>
       </div>
 
-      {/* Share toast */}
       <AnimatePresence>
         {shared && (
           <motion.div initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}
@@ -269,23 +343,17 @@ export default function MessageBubble({ msg, onRegenerate, onSave, feedback, onF
   );
 }
 
-/* ── Action Button ───────────────────────────────────────── */
 function ActionBtn({ icon, label, onClick, active, danger }) {
   const [hov, setHov] = useState(false);
   return (
     <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
+      onClick={onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11.5px] font-semibold transition-all"
       style={{
         border: '1px solid',
         borderColor: active ? 'var(--chip-border)' : 'transparent',
         background:  active ? 'var(--chip-bg)' : hov ? 'var(--chip-bg)' : 'transparent',
-        color: active ? 'var(--primary)'
-             : danger && hov ? '#f87171'
-             : hov ? 'var(--text)'
-             : 'var(--text-3)',
+        color: active ? 'var(--primary)' : danger && hov ? '#f87171' : hov ? 'var(--text)' : 'var(--text-3)',
       }}>
       {icon}
       <span className="hidden sm:inline">{label}</span>

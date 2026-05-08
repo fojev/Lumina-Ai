@@ -83,6 +83,41 @@ export const chatService = {
     });
     return response.data;
   },
+  streamMessage: async (chatId, content, history = [], studyMode = 'normal', college = '', onChunk) => {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${API_BASE_URL}/chat/${chatId}/messages/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ content, history, study_mode: studyMode, college })
+    });
+
+    if (!response.ok) throw new Error('Stream failed');
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let done = false;
+
+    while (!done) {
+      const { value, done: doneReading } = await reader.read();
+      done = doneReading;
+      const chunkValue = decoder.decode(value);
+      
+      const lines = chunkValue.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            onChunk(data);
+          } catch (e) {
+            console.error("Error parsing stream chunk", e);
+          }
+        }
+      }
+    }
+  },
   regenerateMessage: async (chatId, messageId) => {
     const response = await api.post(`/chat/${chatId}/messages/${messageId}/regenerate/`);
     return response.data;

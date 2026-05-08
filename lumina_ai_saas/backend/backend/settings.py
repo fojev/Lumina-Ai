@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load .env file from backend root
-load_dotenv(BASE_DIR / '.env')
+# Load .env file from backend root and override to ensure updates are picked up
+load_dotenv(BASE_DIR / '.env', override=True)
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-p2(k4-n^^wfh5k+oajtw*fx7ifhj!#)y&@bj!i6jj)+&cm&2ev')
 

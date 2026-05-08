@@ -6,14 +6,9 @@ import { chatService } from '../services/api';
  * Handles messages, saved chats, study mode, loading, and regeneration.
  */
 export function useChat(onChatUpdate) {
-  const [messages, setMessages] = useState([
-    {
-      id: 'init',
-      role: 'ai',
-      content: "Hello! I'm Lumina AI — your intelligent study companion. Ask me anything about your exams, notes, or topics you're struggling with.",
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [chatId, setChatId] = useState(null);
   const [studyMode, setStudyMode] = useState('normal');
   const [savedMessages, setSavedMessages] = useState([]);
@@ -33,10 +28,9 @@ export function useChat(onChatUpdate) {
 
     const userMsg = { id: Date.now(), role: 'user', content: content.trim() };
     setMessages(prev => [...prev, userMsg]);
-    setIsLoading(true);
+    setIsStreaming(true);
 
     try {
-      // Ensure a chat session exists
       let currentChatId = chatId;
       if (!currentChatId) {
         const newChat = await chatService.createChat();
@@ -44,46 +38,52 @@ export function useChat(onChatUpdate) {
         setChatId(currentChatId);
       }
 
-      // Build history before adding the new user message
       const history = buildHistory([...messages, userMsg]);
+      
+      // Initialize empty AI message for streaming
+      const aiMsgId = Date.now() + 1;
+      let fullContent = "";
+      
+      setMessages(prev => [...prev, { id: aiMsgId, role: 'ai', content: "" }]);
 
-      const response = await chatService.sendMessage(
+      await chatService.streamMessage(
         currentChatId,
         content.trim(),
         history,
         studyMode,
-        collegeRef.current
+        collegeRef.current,
+        (data) => {
+          if (data.content) {
+            setIsLoading(false);
+            fullContent += data.content;
+            setMessages(prev => prev.map(m => 
+              m.id === aiMsgId ? { ...m, content: fullContent } : m
+            ));
+          }
+          if (data.id && data.done) {
+            setMessages(prev => prev.map(m => 
+              m.id === aiMsgId ? { ...m, id: data.id } : m
+            ));
+          }
+          if (data.error) {
+            throw new Error(data.error);
+          }
+        }
       );
 
-      const aiMsg = {
-        id: response.id || Date.now() + 1,
-        role: 'ai',
-        content: response.content,
-      };
-      setMessages(prev => [...prev, aiMsg]);
-
-      // Notify sidebar of new chat title
       if (onChatUpdate) {
         onChatUpdate(content.trim().substring(0, 32) + (content.length > 32 ? '…' : ''));
       }
     } catch (err) {
-      // Fallback when backend is down or auth fails
-      const errorMsg = err.response?.data?.detail || err.response?.data?.error || 
-                       "I'm having trouble reaching the server right now. Please make sure the backend is running and you're logged in.";
+      const errorMsg = err.message || "I'm having trouble reaching the server. Please check your connection.";
       
-      if (onChatUpdate) {
-        onChatUpdate(content.trim().substring(0, 32) + (content.length > 32 ? '…' : ''));
-      }
       setMessages(prev => [
         ...prev,
-        {
-          id: Date.now() + 1,
-          role: 'ai',
-          content: errorMsg,
-        },
+        { id: Date.now() + 1, role: 'ai', content: `Error: ${errorMsg}` },
       ]);
     } finally {
       setIsLoading(false);
+      setIsStreaming(false);
     }
   }, [chatId, isLoading, messages, studyMode, buildHistory, onChatUpdate]);
 
@@ -97,6 +97,7 @@ export function useChat(onChatUpdate) {
     // Remove the existing AI message and resend
     setMessages(prev => prev.filter(m => m.id !== messageId));
     setIsLoading(true);
+    setIsStreaming(true);
 
     try {
       const history = buildHistory(messages.slice(0, idx - 1));
@@ -114,6 +115,7 @@ export function useChat(onChatUpdate) {
       ]);
     } finally {
       setIsLoading(false);
+      setIsStreaming(false);
     }
   }, [chatId, isLoading, messages, studyMode, buildHistory]);
 
@@ -128,10 +130,60 @@ export function useChat(onChatUpdate) {
     setFeedback(prev => ({ ...prev, [messageId]: prev[messageId] === type ? null : type }));
   }, []);
 
+  const triggerIntro = useCallback(async () => {
+    if (messages.length > 0 || isLoading) return;
+    setIsLoading(true);
+    setIsStreaming(true);
+    
+    try {
+      let currentChatId = chatId;
+      if (!currentChatId) {
+        const newChat = await chatService.createChat();
+        currentChatId = newChat.id;
+        setChatId(currentChatId);
+      }
+
+      // Special hidden prompt for the opening experience
+      const introPrompt = "Introduce yourself as Lumina AI in a short, conversational, and human-like way. Mention that you are here to help with studies and academic excellence. Be modern and premium in tone. Do not use robotic language.";
+      
+      const aiMsgId = Date.now();
+      let fullContent = "";
+      setMessages([{ id: aiMsgId, role: 'ai', content: "" }]);
+
+      await chatService.streamMessage(
+        currentChatId,
+        introPrompt,
+        [],
+        studyMode,
+        collegeRef.current,
+        (data) => {
+          if (data.content) {
+            setIsLoading(false);
+            fullContent += data.content;
+            setMessages(prev => prev.map(m => 
+              m.id === aiMsgId ? { ...m, content: fullContent } : m
+            ));
+          }
+          if (data.id && data.done) {
+            setMessages(prev => prev.map(m => 
+              m.id === aiMsgId ? { ...m, id: data.id } : m
+            ));
+          }
+        }
+      );
+    } catch (e) {
+      console.error("Intro failed", e);
+    } finally {
+      setIsLoading(false);
+      setIsStreaming(false);
+    }
+  }, [chatId, isLoading, messages, studyMode]);
+
   return {
     messages,
     setMessages,
     isLoading,
+    isStreaming,
     studyMode,
     setStudyMode,
     savedMessages,
@@ -140,5 +192,6 @@ export function useChat(onChatUpdate) {
     setFeedbackFor,
     sendMessage,
     regenerate,
+    triggerIntro,
   };
 }

@@ -219,6 +219,36 @@ code:not(pre code) {
 .theme-option:hover { border-color: var(--primary); background: var(--chip-bg); }
 .theme-option.selected { border-color: var(--primary); background: var(--chip-bg); }
 
+/* ── Blinking cursor ────────────────────────────────────── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+.blinking-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: var(--primary);
+  margin-left: 2px;
+  vertical-align: middle;
+  animation: blink 1s infinite;
+}
+
+/* ── Layout stabilization ───────────────────────────────── */
+.chat-container-max {
+  max-width: 52rem;
+  margin: 0 auto;
+  width: 100%;
+  /* Contain dynamic height changes */
+  overflow-anchor: none; 
+}
+
+.message-bubble-content {
+  /* Prevent horizontal shifts */
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 /* ── Toast ──────────────────────────────────────────────── */
 @keyframes toast-slide {
   from { opacity: 0; transform: translateX(-50%) translateY(8px); }

@@ -109,7 +109,7 @@ export default function App() {
               LUMINA AI
             </h1>
             <p className="text-[9px] font-bold uppercase tracking-[0.18em] mt-1.5" style={{ color: 'var(--text-3)' }}>
-              Academic Intel
+              Adaptive Study Intelligence
             </p>
           </div>
         </div>
