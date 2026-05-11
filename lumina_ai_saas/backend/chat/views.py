@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import Chat, Message
 from .serializers import ChatSerializer, MessageSerializer
-from ai_services.groq_service import get_groq_response
+from ai_services.groq_service import get_groq_response, detect_response_mode
 from intelligence.services.pyq_service import PYQService
 from resources.youtube_service import get_youtube_videos
 
@@ -48,11 +48,18 @@ class ChatMessageView(views.APIView):
             chat.title = user_message_content[:40] + ("…" if len(user_message_content) > 40 else "")
             chat.save()
 
-        # ── AGENT 3: PYQ Intelligence ──────────────────
-        pyq_data = PYQService.analyze_topic(user_message_content, college)
+        # ── DETECT MODE TO OPTIMIZE RESOURCES ───────────
+        mode = detect_response_mode(user_message_content)
+
+        youtube_videos = []
+        pyq_data = None
         
-        # ── AGENT 4: YouTube Resources ──────────────────
-        youtube_videos = get_youtube_videos(user_message_content, max_results=3)
+        if mode != "short":
+            # ── AGENT 3: PYQ Intelligence ──────────────────
+            pyq_data = PYQService.analyze_topic(user_message_content, college)
+            
+            # ── AGENT 4: YouTube Resources ──────────────────
+            youtube_videos = get_youtube_videos(user_message_content, max_results=3)
 
         # Build context for AI
         intelligence_context = ""
@@ -73,8 +80,8 @@ class ChatMessageView(views.APIView):
         prompt_with_context = user_message_content
         if intelligence_context:
             prompt_with_context += f"\n\n[SYSTEM DATA]: Use the following academic context and resources. " \
-                                   f"After your deep explanation, ALWAYS add a section titled 'SOURCES' " \
-                                   f"using the format: ---SOURCES--- followed by the YouTube titles and links. " \
+                                   f"After your deep explanation, add a section titled 'SOURCES' BEFORE the SUGGESTIONS block. " \
+                                   f"Format it as: ---SOURCES--- followed by the YouTube titles and links. " \
                                    f"Each source should be on a new line like: [Title](Link). " \
                                    f"Also naturally integrate the PYQ data if relevant.\n\n" \
                                    f"DATA:\n{intelligence_context}"

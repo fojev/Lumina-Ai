@@ -32,7 +32,7 @@ const GREETINGS = [
   "Your AI assistant is ready.",
   "Ask anything. Build everything.",
   "Welcome back.",
-  "Let’s create something amazing.",
+  "Let's create something amazing.",
   "Start your next idea here.",
   "How can I assist you today?"
 ];
@@ -111,16 +111,12 @@ function DynamicGreeting() {
 /* ============================================================
    CHAT INTERFACE
    ============================================================ */
-export default function ChatInterface({ onChatUpdate, tab }) {
+export default function ChatInterface({ onChatUpdate, tab, chatKey }) {
   const {
     messages, isLoading, isStreaming, studyMode, setStudyMode,
-    sendMessage, regenerate, saveMessage, feedback, setFeedbackFor, triggerIntro
+    sendMessage, regenerate, saveMessage, feedback, setFeedbackFor,
+    resetChat,
   } = useChat(onChatUpdate);
-
-  // Note: Disabled triggerIntro on mount to prioritize the new Dynamic Greeting section.
-  // useEffect(() => {
-  //   if (messages.length === 0) triggerIntro();
-  // }, []);
 
   const [input,              setInput]              = useState('');
   const [suggestions,        setSuggestions]        = useState([
@@ -130,18 +126,29 @@ export default function ChatInterface({ onChatUpdate, tab }) {
   ]);
   const [showAttachMenu,     setShowAttachMenu]     = useState(false);
   const [fileUploading,      setFileUploading]      = useState(false);
+  // isThinking = true from send until first token arrives (for typing animation)
+  const [isThinking,         setIsThinking]         = useState(false);
 
-  const fileInputRef   = useRef(null);
-  const messagesEndRef = useRef(null);
-  const attachRef      = useRef(null);
-  const textareaRef    = useRef(null);
+  const fileInputRef       = useRef(null);
+  const messagesEndRef     = useRef(null);
+  const attachRef          = useRef(null);
+  const textareaRef        = useRef(null);
+  const composerRef        = useRef(null);
+  const scrollContainerRef = useRef(null);
 
-  /* ── new-chat event (theme-safe, no reload) ─────────────── */
+  /* ── Reset chat when chatKey changes (New Chat button) ─── */
   useEffect(() => {
-    const h = () => { window.location.hash = '#chat-' + Date.now(); };
-    window.addEventListener('reset-chat', h);
-    return () => window.removeEventListener('reset-chat', h);
-  }, []);
+    if (chatKey !== undefined) {
+      resetChat();
+      setSuggestions([
+        'Help me study Calculus',
+        'Summarize my notes',
+        'Predict exam topics',
+      ]);
+      setInput('');
+      setIsThinking(false);
+    }
+  }, [chatKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── sync mode with sidebar tab ─────────────────────────── */
   useEffect(() => {
@@ -150,27 +157,54 @@ export default function ChatInterface({ onChatUpdate, tab }) {
     else                      setStudyMode('Balanced');
   }, [tab, setStudyMode]);
 
-  /* ── refresh suggestions after reply ────────────────────── */
+  /* ── dynamic bottom padding matching composer height ─── */
   useEffect(() => {
-    if (messages.length > 1 && !isLoading)
-      setSuggestions(['Explain further', 'Give an example', 'Key points?']);
-  }, [messages.length, isLoading]);
+    const composer = composerRef.current;
+    const scroller = scrollContainerRef.current;
+    if (!composer || !scroller) return;
+    const update = () => {
+      scroller.style.paddingBottom = (composer.offsetHeight + 24) + 'px';
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(composer);
+    return () => ro.disconnect();
+  }, []); // Only on mount — ResizeObserver handles all future size changes
 
-  /* ── scroll to bottom ────────────────────────────────────── */
-  const scrollContainerRef = useRef(null);
-
+  /* ── refresh suggestions after reply ─────────────────── */
   useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 150;
-    
-    if (isAtBottom || (messages.length > 0 && messages[messages.length-1].role === 'user')) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0 && !isLoading && !isStreaming) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg.role === 'ai' && lastMsg.content) {
+        const match = lastMsg.content.match(/---SUGGESTIONS---[\r\n]+([\s\S]*)/);
+        if (match) {
+          const lines = match[1].split('\n').filter(l => l.trim().match(/^\d+\./));
+          const parsedSuggestions = lines
+            .map(l => l.replace(/^\d+\.\s*/, '').replace(/\[|\]|\*/g, '').trim())
+            .filter(Boolean);
+          if (parsedSuggestions.length > 0) {
+            setSuggestions(parsedSuggestions.slice(0, 3));
+            return;
+          }
+        }
+      }
+      if (messages.length > 1) setSuggestions([]); // Clear after conversation
     }
   }, [messages, isLoading, isStreaming]);
 
-  /* ── close attachment menu on outside click ─────────────── */
+  /* ── scroll to bottom ────────────────────────────────── */
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 250;
+    if (isAtBottom || isThinking || (messages.length > 0 && messages[messages.length-1].role === 'user')) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 60);
+    }
+  }, [messages, isLoading, isStreaming, isThinking]);
+
+  /* ── close attachment menu on outside click ──────────── */
   useEffect(() => {
     const h = (e) => {
       if (attachRef.current && !attachRef.current.contains(e.target))
@@ -180,7 +214,7 @@ export default function ChatInterface({ onChatUpdate, tab }) {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  /* ── auto-resize textarea ────────────────────────────────── */
+  /* ── auto-resize textarea ────────────────────────────── */
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -189,16 +223,17 @@ export default function ChatInterface({ onChatUpdate, tab }) {
     }
   }, [input]);
 
-  /* ── send ────────────────────────────────────────────────── */
+  /* ── send ────────────────────────────────────────────── */
   const handleSend = async (textOverride) => {
     const text = (textOverride || input).trim();
     if (!text || isLoading) return;
     if (!textOverride) setInput('');
     setSuggestions([]);
-    await sendMessage(text);
+    setIsThinking(true);
+    await sendMessage(text, () => setIsThinking(false));
   };
 
-  /* ── file upload ─────────────────────────────────────────── */
+  /* ── file upload ─────────────────────────────────────── */
   const handleFile = async (file) => {
     if (!file) return;
     setFileUploading(true);
@@ -243,16 +278,17 @@ export default function ChatInterface({ onChatUpdate, tab }) {
     } catch (e) { console.error(e); }
   };
 
-  const isEmpty = messages.length === 0;
+  const isEmpty = messages.length === 0 && !isThinking;
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden relative"
       style={{ background: 'var(--bg)' }}>
 
-      {/* ── Messages ─────────────────────────────────────── */}
+      {/* ── Messages ─────────────────────────────────── */}
       <div 
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto px-4 sm:px-6 pt-20 pb-56 no-scrollbar"
+        className="flex-1 overflow-y-auto px-4 sm:px-6 pt-20 no-scrollbar"
+        style={{ paddingBottom: '200px' }}
       >
         <div className="chat-container-max space-y-10">
 
@@ -273,27 +309,42 @@ export default function ChatInterface({ onChatUpdate, tab }) {
             />
           ))}
 
-          {/* Typing indicator */}
+          {/* Typing/Thinking indicator — shows before first token */}
           <AnimatePresence>
-            {isLoading && <TypingBubble />}
+            {isThinking && <TypingBubble />}
           </AnimatePresence>
 
-          <div ref={messagesEndRef} className="h-2" />
+          {/* ── Suggestion chips — IN the scroll flow, not overlaying ─ */}
+          <AnimatePresence>
+            {suggestions.length > 0 && !isThinking && !isLoading && !isStreaming && messages.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                className="flex flex-wrap justify-center gap-2 pt-2 pb-1"
+              >
+                {suggestions.map((s, i) => (
+                  <SuggestionChip key={i} label={s} delay={i * 0.06} onSend={handleSend} />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div ref={messagesEndRef} className="h-1" />
         </div>
       </div>
 
-      {/* ── Composer ─────────────────────────────────────── */}
-      <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-6 pb-6 pointer-events-none"
-        style={{ background: 'linear-gradient(to top, var(--bg) 60%, transparent)' }}>
-        <div className="chat-container-max space-y-4 pointer-events-auto">
+      {/* ── Composer ─────────────────────────────────── */}
+      <div ref={composerRef} className="absolute bottom-0 left-0 right-0 px-4 sm:px-6 pb-6 pointer-events-none"
+        style={{ background: 'linear-gradient(to top, var(--bg) 72%, transparent)' }}>
+        <div className="chat-container-max pointer-events-auto">
 
-          {/* Suggestion chips */}
+          {/* Suggestion chips on empty state only */}
           <AnimatePresence>
-            {suggestions.length > 0 && (
+            {suggestions.length > 0 && isEmpty && (
               <motion.div
                 initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="flex flex-wrap justify-center gap-2"
+                className="flex flex-wrap justify-center gap-2 mb-3"
               >
                 {suggestions.map((s, i) => (
                   <SuggestionChip key={i} label={s} delay={i * 0.06} onSend={handleSend} />
@@ -375,7 +426,7 @@ export default function ChatInterface({ onChatUpdate, tab }) {
                   whileHover={{ scale: input.trim() ? 1.07 : 1 }}
                   whileTap={{   scale: input.trim() ? 0.92 : 1 }}
                   onClick={() => handleSend()}
-                  disabled={!input.trim() || isLoading}
+                  disabled={!input.trim() || isLoading || isThinking}
                   className="p-3 rounded-xl flex-shrink-0 transition-all"
                   style={{
                     background: input.trim()
@@ -385,7 +436,7 @@ export default function ChatInterface({ onChatUpdate, tab }) {
                     color:     input.trim() ? '#fff' : 'var(--text-3)',
                   }}
                 >
-                  {isLoading
+                  {(isLoading || isThinking)
                     ? <div className="w-5 h-5 rounded-full border-2 animate-spin"
                         style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: '#fff' }} />
                     : <ArrowUp size={19} />
@@ -443,11 +494,14 @@ function SuggestionChip({ label, delay, onSend }) {
       transition={{ delay }} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }}
       onClick={() => onSend(label)}
       onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      className="px-4 py-2 rounded-xl text-[13px] font-semibold transition-all whitespace-nowrap"
+      className="px-4 py-2 rounded-xl text-[13px] font-semibold transition-all"
       style={{
-        background:   hov ? 'var(--chip-bg)' : 'var(--chip-bg)',
+        background:   'var(--chip-bg)',
         border:       `1px solid ${hov ? 'var(--primary)' : 'var(--chip-border)'}`,
         color:        hov ? 'var(--primary-h)' : 'var(--text-2)',
+        whiteSpace:   'normal',
+        textAlign:    'left',
+        maxWidth:     '320px',
       }}>
       {label}
     </motion.button>

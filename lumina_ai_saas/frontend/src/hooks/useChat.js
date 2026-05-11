@@ -1,34 +1,52 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { chatService } from '../services/api';
 
 /**
  * Central chat state hook.
- * Handles messages, saved chats, study mode, loading, and regeneration.
+ * Handles messages, saved chats, study mode, loading, streaming, memory, and reset.
  */
 export function useChat(onChatUpdate) {
-  const [messages, setMessages] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [chatId, setChatId] = useState(null);
-  const [studyMode, setStudyMode] = useState('normal');
+  const [messages, setMessages]       = useState([]);
+  const [isLoading, setIsLoading]     = useState(false);
+  const [isStreaming, setIsStreaming]  = useState(false);
+  const [chatId, setChatId]           = useState(null);
+  const [studyMode, setStudyMode]     = useState('normal');
   const [savedMessages, setSavedMessages] = useState([]);
-  const [feedback, setFeedback] = useState({}); // { messageId: 'like'|'dislike' }
+  const [feedback, setFeedback]       = useState({});
   const collegeRef = useRef(localStorage.getItem('user_college') || '');
 
-  // Build history array from current messages (last 10 for context window)
+  // ── Build history for context window (last 20 messages for smart memory)
   const buildHistory = useCallback((msgs) => {
     return msgs
       .filter(m => m.id !== 'init')
-      .slice(-10)
-      .map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.content }));
+      .slice(-20)
+      .map(m => ({
+        role: m.role === 'ai' ? 'assistant' : 'user',
+        // Strip internal blocks from history to keep context clean
+        content: (m.content || '')
+          .replace(/---SUGGESTIONS---[\s\S]*/g, '')
+          .replace(/---SOURCES---[\s\S]*/g, '')
+          .trim(),
+      }))
+      .filter(m => m.content); // skip empty
   }, []);
 
-  const sendMessage = useCallback(async (content) => {
+  // ── Reset to blank state (for New Chat)
+  const resetChat = useCallback(() => {
+    setMessages([]);
+    setChatId(null);
+    setIsLoading(false);
+    setIsStreaming(false);
+    setFeedback({});
+  }, []);
+
+  // ── Send message with streaming + onFirstToken callback
+  const sendMessage = useCallback(async (content, onFirstToken) => {
     if (!content.trim() || isLoading) return;
 
     const userMsg = { id: Date.now(), role: 'user', content: content.trim() };
     setMessages(prev => [...prev, userMsg]);
-    setIsStreaming(true);
+    setIsLoading(true);
 
     try {
       let currentChatId = chatId;
@@ -40,11 +58,13 @@ export function useChat(onChatUpdate) {
 
       const history = buildHistory([...messages, userMsg]);
       
-      // Initialize empty AI message for streaming
+      // Start streaming - we don't add the AI message until the first token arrives
+      // to avoid "duplicate" empty bubbles alongside the thinking indicator.
       const aiMsgId = Date.now() + 1;
-      let fullContent = "";
-      
-      setMessages(prev => [...prev, { id: aiMsgId, role: 'ai', content: "" }]);
+      let fullContent = '';
+      let firstTokenReceived = false;
+
+      setIsStreaming(true);
 
       await chatService.streamMessage(
         currentChatId,
@@ -54,14 +74,26 @@ export function useChat(onChatUpdate) {
         collegeRef.current,
         (data) => {
           if (data.content) {
-            setIsLoading(false);
-            fullContent += data.content;
-            setMessages(prev => prev.map(m => 
-              m.id === aiMsgId ? { ...m, content: fullContent } : m
-            ));
+            if (!firstTokenReceived) {
+              firstTokenReceived = true;
+              
+              // 1. Stop thinking state
+              setIsLoading(false);
+              if (onFirstToken) onFirstToken();
+              
+              // 2. Add the AI message to list for the first time
+              fullContent = data.content;
+              setMessages(prev => [...prev, { id: aiMsgId, role: 'ai', content: fullContent }]);
+            } else {
+              // 3. Update existing message
+              fullContent += data.content;
+              setMessages(prev => prev.map(m =>
+                m.id === aiMsgId ? { ...m, content: fullContent } : m
+              ));
+            }
           }
           if (data.id && data.done) {
-            setMessages(prev => prev.map(m => 
+            setMessages(prev => prev.map(m =>
               m.id === aiMsgId ? { ...m, id: data.id } : m
             ));
           }
@@ -71,12 +103,13 @@ export function useChat(onChatUpdate) {
         }
       );
 
+
       if (onChatUpdate) {
         onChatUpdate(content.trim().substring(0, 32) + (content.length > 32 ? '…' : ''));
       }
     } catch (err) {
       const errorMsg = err.message || "I'm having trouble reaching the server. Please check your connection.";
-      
+      if (onFirstToken) onFirstToken(); // Stop thinking state even on error
       setMessages(prev => [
         ...prev,
         { id: Date.now() + 1, role: 'ai', content: `Error: ${errorMsg}` },
@@ -89,12 +122,10 @@ export function useChat(onChatUpdate) {
 
   const regenerate = useCallback(async (messageId) => {
     if (isLoading) return;
-    // Find the user message before this AI message
     const idx = messages.findIndex(m => m.id === messageId);
     if (idx <= 0) return;
     const userMsg = messages[idx - 1];
 
-    // Remove the existing AI message and resend
     setMessages(prev => prev.filter(m => m.id !== messageId));
     setIsLoading(true);
     setIsStreaming(true);
@@ -130,6 +161,19 @@ export function useChat(onChatUpdate) {
     setFeedback(prev => ({ ...prev, [messageId]: prev[messageId] === type ? null : type }));
   }, []);
 
+  // ── Load a past chat by ID (persistent memory)
+  const loadChat = useCallback(async (id, pastMessages) => {
+    setChatId(id);
+    // Convert DB messages to UI format
+    const uiMessages = (pastMessages || []).map(m => ({
+      id: m.id,
+      role: m.role === 'assistant' ? 'ai' : m.role,
+      content: m.content || '',
+    }));
+    setMessages(uiMessages);
+    setFeedback({});
+  }, []);
+
   const triggerIntro = useCallback(async () => {
     if (messages.length > 0 || isLoading) return;
     setIsLoading(true);
@@ -143,12 +187,11 @@ export function useChat(onChatUpdate) {
         setChatId(currentChatId);
       }
 
-      // Special hidden prompt for the opening experience
       const introPrompt = "Introduce yourself as Lumina AI in a short, conversational, and human-like way. Mention that you are here to help with studies and academic excellence. Be modern and premium in tone. Do not use robotic language.";
       
       const aiMsgId = Date.now();
-      let fullContent = "";
-      setMessages([{ id: aiMsgId, role: 'ai', content: "" }]);
+      let fullContent = '';
+      let firstTokenReceived = false;
 
       await chatService.streamMessage(
         currentChatId,
@@ -158,21 +201,28 @@ export function useChat(onChatUpdate) {
         collegeRef.current,
         (data) => {
           if (data.content) {
-            setIsLoading(false);
-            fullContent += data.content;
-            setMessages(prev => prev.map(m => 
-              m.id === aiMsgId ? { ...m, content: fullContent } : m
-            ));
+            if (!firstTokenReceived) {
+              firstTokenReceived = true;
+              setIsLoading(false);
+              fullContent = data.content;
+              setMessages([{ id: aiMsgId, role: 'ai', content: fullContent }]);
+            } else {
+              fullContent += data.content;
+              setMessages(prev => prev.map(m =>
+                m.id === aiMsgId ? { ...m, content: fullContent } : m
+              ));
+            }
           }
           if (data.id && data.done) {
-            setMessages(prev => prev.map(m => 
+
+            setMessages(prev => prev.map(m =>
               m.id === aiMsgId ? { ...m, id: data.id } : m
             ));
           }
         }
       );
     } catch (e) {
-      console.error("Intro failed", e);
+      console.error('Intro failed', e);
     } finally {
       setIsLoading(false);
       setIsStreaming(false);
@@ -192,6 +242,8 @@ export function useChat(onChatUpdate) {
     setFeedbackFor,
     sendMessage,
     regenerate,
+    resetChat,
+    loadChat,
     triggerIntro,
   };
 }

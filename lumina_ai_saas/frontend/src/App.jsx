@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ChatInterface from './components/ChatInterface';
 import SearchBar from './components/SearchBar';
+import { chatService } from './services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings, LogOut, UserCircle, ChevronRight, HelpCircle,
@@ -52,22 +53,37 @@ export default function App() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
 
-  const [recentChats, setRecentChats] = useState([
-    { id: '1', title: 'Calculus Help' },
-    { id: '2', title: 'Modern History Summary' },
-  ]);
+  const [recentChats, setRecentChats] = useState([]);
   const [searchQuery,       setSearchQuery]       = useState('');
   const [activeTab,         setActiveTab]         = useState('notes');
   const [showProfileModal,  setShowProfileModal]  = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [chatKey,           setChatKey]           = useState(0); // increment to reset ChatInterface
+  const [activeChatId,      setActiveChatId]      = useState(null);
   const [userData, setUserData] = useState({
     name: 'Aryan Lamba', gender: 'Male', dob: '2005-01-01',
   });
 
-  const handleChatUpdate = (title) =>
-    setRecentChats(prev => prev.find(c => c.title === title)
-      ? prev
-      : [{ id: Date.now().toString(), title }, ...prev]);
+  // Load chats from API on mount for persistent history
+  useEffect(() => {
+    chatService.getChats()
+      .then(data => {
+        const chats = Array.isArray(data) ? data : (data.results || []);
+        setRecentChats(chats.map(c => ({ id: String(c.id), title: c.title || 'New Chat' })));
+      })
+      .catch(() => {
+        // Fallback to empty — user hasn't started a chat yet
+        setRecentChats([]);
+      });
+  }, []);
+
+  const handleChatUpdate = (title) => {
+    setRecentChats(prev => {
+      const exists = prev.find(c => c.title === title);
+      if (exists) return prev;
+      return [{ id: Date.now().toString(), title }, ...prev];
+    });
+  };
 
   const handleRenameChat = (id, t) =>
     setRecentChats(prev => prev.map(c => c.id === id ? { ...c, title: t } : c));
@@ -75,8 +91,11 @@ export default function App() {
   const handleDeleteChat = (id) =>
     setRecentChats(prev => prev.filter(c => c.id !== id));
 
-  const handleNewChat = () =>
-    window.dispatchEvent(new CustomEvent('reset-chat'));
+  // New Chat: simply increment chatKey → ChatInterface remounts cleanly
+  const handleNewChat = () => {
+    setChatKey(k => k + 1);
+    setActiveChatId(null);
+  };
 
   const filteredChats = recentChats.filter(c =>
     (c.title || '').toLowerCase().includes(searchQuery.toLowerCase())
@@ -180,7 +199,7 @@ export default function App() {
             {userData.name.charAt(0)}
           </motion.div>
         </header>
-        <ChatInterface onChatUpdate={handleChatUpdate} tab={activeTab} />
+        <ChatInterface key={chatKey} onChatUpdate={handleChatUpdate} tab={activeTab} chatKey={chatKey} />
       </main>
 
       {/* ── Profile Modal ─────────────────────────────────────── */}

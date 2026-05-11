@@ -32,7 +32,7 @@ function exportPDF(content) {
   doc.text(new Date().toLocaleDateString('en-IN', { dateStyle: 'long' }), pageW - m, 24, { align: 'right' });
   y = 64;
 
-  const clean = content.replace(/---SOURCES---[\s\S]*/g, '').replace(/\*\*(.*?)\*\*/g, '$1').trim();
+  const clean = content.replace(/---SOURCES---[\s\S]*/g, '').replace(/---SUGGESTIONS---[\s\S]*/g, '').replace(/\*\*(.*?)\*\*/g, '$1').trim();
 
   for (const raw of clean.split('\n')) {
     if (y > pageH - m) { doc.addPage(); y = m; }
@@ -66,20 +66,25 @@ function exportPDF(content) {
 export function TypingBubble() {
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }} className="flex items-center gap-3.5">
+      exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.25 }}
+      className="flex items-center gap-3.5">
       <div className="w-9 h-9 rounded-2xl flex items-center justify-center flex-shrink-0"
         style={{ background: 'linear-gradient(135deg,var(--primary),var(--secondary))', boxShadow: '0 4px 14px var(--glow)' }}>
         <span className="text-[10px] font-black text-white">LU</span>
       </div>
-      <div className="flex items-center gap-1.5 px-4 py-3.5 rounded-2xl"
+      <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl"
         style={{ background: 'var(--sidebar)', border: '1px solid var(--border)' }}>
-        <div className="typing-dot w-2 h-2 rounded-full" style={{ background: 'var(--primary)' }} />
-        <div className="typing-dot w-2 h-2 rounded-full" style={{ background: 'var(--primary)' }} />
-        <div className="typing-dot w-2 h-2 rounded-full" style={{ background: 'var(--primary)' }} />
+        <div className="flex items-center gap-1.5">
+          <div className="typing-dot w-2 h-2 rounded-full" style={{ background: 'var(--primary)' }} />
+          <div className="typing-dot w-2 h-2 rounded-full" style={{ background: 'var(--primary)' }} />
+          <div className="typing-dot w-2 h-2 rounded-full" style={{ background: 'var(--primary)' }} />
+        </div>
       </div>
+
     </motion.div>
   );
 }
+
 
 /* ── Typewriter Hook ────────────────────────────────────── */
 function useTypewriter(text, speed = 10, isStreaming) {
@@ -161,10 +166,26 @@ export default function MessageBubble({ msg, onRegenerate, onSave, feedback, onF
     );
   }
 
-  /* ── Parse sources ──────────────────────────────────── */
-  const [mainText, sourcesRaw = ''] = (msg.content || '').split('---SOURCES---').map(s => s.trim());
-  const sources = sourcesRaw.split('\n').filter(l => l.includes(']('))
-    .map(l => { const m = l.match(/\[(.*?)\]\((.*?)\)/); return m ? { title: m[1], url: m[2] } : null; })
+  /* ── Parse sources and suggestions ──────────────────────────────────── */
+  let rawContent = msg.content || '';
+  rawContent = rawContent.replace(/---SUGGESTIONS---[\s\S]*/, '').trim();
+  const [mainText, sourcesRaw = ''] = rawContent.split('---SOURCES---').map(s => s.trim());
+  const sources = sourcesRaw.split('\n').filter(l => l.includes('http'))
+    .map(l => { 
+      // Format 1: [Title](URL)
+      let m = l.match(/\[(.*?)\]\((https?:\/\/[^\s)]+)\)/);
+      if (m) return { title: m[1].trim(), url: m[2].trim() };
+      // Format 2: Title: https://...
+      m = l.match(/^(.+?):\s*(https?:\/\/\S+)/);
+      if (m) return { title: m[1].replace(/^-\s*/, '').trim(), url: m[2].trim() };
+      // Format 3: Title (https://...)
+      m = l.match(/^(.+?)\s*\((https?:\/\/[^)]+)\)/);
+      if (m) return { title: m[1].replace(/^-\s*/, '').trim(), url: m[2].trim() };
+      // Format 4: bare URL only
+      m = l.match(/(https?:\/\/\S+)/);
+      if (m) return { title: 'YouTube Video', url: m[1].trim() };
+      return null;
+    })
     .filter(Boolean);
   const hasSources = sources.length > 0;
 
